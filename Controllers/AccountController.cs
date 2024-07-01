@@ -5,9 +5,11 @@ using System.Threading.Tasks;
 using aspnet_api_server.Dtos.Account;
 using aspnet_api_server.Interfaces;
 using aspnet_api_server.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace aspnet_api_server.Controllers
 {
@@ -104,6 +106,99 @@ namespace aspnet_api_server.Controllers
 					Token = _tokenService.CreateToken(user)
 				}
 			);
+		}
+
+		[HttpGet("user")]
+		[Authorize]
+		public async Task<IActionResult> GetUser()
+		{
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+
+			if (email == null)
+				return Unauthorized("Invalid token. No claim found for email in token.");
+
+			var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+			if (user == null)
+				return Unauthorized("User not found");
+
+			return Ok(
+				new GetUserDto
+				{
+					Username = user.UserName,
+					Email = user.Email,
+					FirstName = user.FirstName,
+					LastName = user.LastName,
+					CreatedAt = user.CreatedAt,
+					UpdatedAt = user.UpdatedAt
+				}
+			);
+		}
+
+		[HttpPut("update")]
+		[Authorize]
+		public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto updateUserDto)
+		{
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+
+			if (email == null)
+				return Unauthorized("Invalid token. No claim found for email in token.");
+
+			var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+			if (user == null)
+				return Unauthorized("User not found");
+
+			user.FirstName = updateUserDto.FirstName ?? user.FirstName;
+			user.LastName = updateUserDto.LastName ?? user.LastName;
+			user.UpdatedAt = DateTime.UtcNow;
+
+			var result = await _userManager.UpdateAsync(user);
+
+			if (result.Succeeded)
+			{
+				return Ok(
+					new GetUserDto
+					{
+						Username = user.UserName,
+						Email = user.Email,
+						FirstName = user.FirstName,
+						LastName = user.LastName,
+						CreatedAt = user.CreatedAt,
+						UpdatedAt = user.UpdatedAt
+					}
+				);
+			}
+			else
+			{
+				return StatusCode(500, result.Errors);
+			}
+		}
+
+		[HttpDelete("delete")]
+		[Authorize]
+		public async Task<IActionResult> DeleteUser()
+		{
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+
+			if (email == null)
+				return Unauthorized("Invalid token. No claim found for email in token.");
+
+			var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+			if (user == null)
+				return Unauthorized("User not found");
+
+			var result = await _userManager.DeleteAsync(user);
+
+			if (result.Succeeded)
+			{
+				return Ok("User deleted successfully");
+			}
+			else
+			{
+				return StatusCode(500, result.Errors);
+			}
 		}
 	}
 }

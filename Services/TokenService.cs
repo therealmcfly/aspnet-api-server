@@ -21,6 +21,7 @@ namespace aspnet_api_server.Services
 			_config = config;
 			_key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:SigningKey"]));
 		}
+
 		public string CreateToken(AppUser user)
 		{
 			var claims = new List<Claim>
@@ -41,6 +42,30 @@ namespace aspnet_api_server.Services
 			var token = tokenHandler.CreateToken(tokenDescriptor);
 			var tokenString = tokenHandler.WriteToken(token);
 			return tokenString;
+		}
+
+		public string ValidateToken(string token)
+		{
+			var tokenHandler = new JwtSecurityTokenHandler();
+			var tokenValidationParameters = new TokenValidationParameters
+			{
+				ValidateIssuerSigningKey = true,
+				IssuerSigningKey = _key,
+				ValidateIssuer = true,
+				ValidIssuer = _config["JWT:Issuer"],
+				ValidateAudience = true,
+				ValidAudience = _config["JWT:Audience"],
+				ValidateLifetime = true,
+				ClockSkew = TimeSpan.Zero
+			};
+			SecurityToken securityToken;
+			var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out securityToken);
+			var jwtSecurityToken = securityToken as JwtSecurityToken;
+			if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha512, StringComparison.InvariantCultureIgnoreCase))
+			{
+				throw new SecurityTokenException("Invalid token");
+			}
+			return principal.Identity.Name;
 		}
 	}
 }
