@@ -54,3 +54,24 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# Node.js dependencies
+node_modules/
+
+# Coverage files
+coverage/
+*.coverage
+*.coveragexml
+
+# Distribution folders
+dist/
+out/
+build/
+
+# Logs
+*.log
+*.tlog
+
+# Docker
+docker-compose.override.yml
+
